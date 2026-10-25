@@ -1,0 +1,47 @@
+# Fichier : .gitignore
+# Rôle    : liste des fichiers que Git ne doit jamais envoyer sur le dépôt
+#           (secrets, états Terraform, fichiers temporaires)
+# Utilise : rien
+# Utilisé par : git (add, status, commit)
+
+# --- Terraform ---
+# Dossier des providers téléchargés par terraform init (lourd, se recrée)
+.terraform/
+# État de l'infrastructure : peut contenir des secrets
+*.tfstate
+*.tfstate.*
+# Plans enregistrés par terraform plan -out : peuvent contenir des secrets
+*.tfplan
+# Valeurs de variables locales : souvent des secrets
+*.tfvars
+*.tfvars.json
+# Journaux de plantage et verrou temporaire
+crash.log
+crash.*.log
+.terraform.tfstate.lock.info
+# Surcharges locales et configuration personnelle de la ligne de commande
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# --- Ansible ---
+# Fichiers de reprise après échec (anciennes versions d'Ansible)
+*.retry
+# Fichier contenant le mot de passe d'Ansible Vault
+.vault_pass*
+
+# --- Secrets ---
+# Variables d'environnement (mots de passe Elasticsearch…) ; l'exemple reste
+.env
+!.env.example
+# Clés privées
+*.pem
+*.key
+
+# --- Éditeur et système ---
+.vscode/
+*.swp
+.DS_Store
