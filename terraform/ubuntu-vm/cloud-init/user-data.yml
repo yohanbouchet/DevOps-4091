@@ -1,0 +1,19 @@
+#cloud-config
+# Fichier : terraform/ubuntu-vm/cloud-init/user-data.yml
+# Rôle    : configuration du premier démarrage de la VM (utilisateur, SSH)
+# Utilise : variable SSH_PUBLIC_KEY, remplacée par generate.sh
+# Utilisé par : generate.sh → cloud-init.img → cloud-init dans la VM
+
+# Compte dédié à l'automatisation, connecté uniquement par clé SSH
+users:
+  - name: ansible
+    shell: /bin/bash
+    lock_passwd: true
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ${SSH_PUBLIC_KEY}
+
+# Connexion SSH par mot de passe interdite : clé obligatoire
+ssh_pwauth: false
+# Compte root interdit en SSH
+disable_root: true

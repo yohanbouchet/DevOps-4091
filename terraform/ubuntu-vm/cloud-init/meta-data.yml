@@ -1,0 +1,9 @@
+# Fichier : terraform/ubuntu-vm/cloud-init/meta-data.yml
+# Rôle    : identité de la VM pour cloud-init (identifiant, nom de machine)
+# Utilise : rien
+# Utilisé par : generate.sh → cloud-init.img
+
+# Identifiant : cloud-init ne rejoue la configuration que s'il change
+instance-id: p5-ubuntu-vm
+# Nom de la machine, visible dans l'invite de commande
+local-hostname: p5-ubuntu-vm

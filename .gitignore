@@ -33,6 +33,10 @@ terraform.rc
 # Fichier contenant le mot de passe d'Ansible Vault
 .vault_pass*
 
+# --- cloud-init ---
+# Disque généré par generate.sh (se régénère, contient la clé publique)
+cloud-init.img
+
 # --- Secrets ---
 # Variables d'environnement (mots de passe Elasticsearch…) ; l'exemple reste
 .env
