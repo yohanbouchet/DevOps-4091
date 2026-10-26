@@ -1,0 +1,73 @@
+# Fichier : ansible/deploy.yml
+# Rôle    : installe Nginx et déploie l'application Angular sur les serveurs web
+# Utilise : hosts, templates/app.conf.j2, files/olympic-games-starter/
+# Utilisé par : ansible-playbook deploy.yml
+---
+- name: Deploy the Olympic Games Angular app with Nginx
+  hosts: web
+  # Les tâches système demandent les droits root (sudo sur la VM)
+  become: true
+
+  # Variables du déploiement, réutilisées par le template
+  vars:
+    app_name: olympic-games-starter
+    app_root: "/var/www/html/{{ app_name }}"
+  tasks:
+    # Installe Nginx depuis les dépôts Ubuntu (cache apt rafraîchi si > 1 h)
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    # Nginx démarré maintenant et à chaque démarrage de la VM
+    - name: Ensure Nginx is started and enabled
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+    # Copie l'application déjà compilée (contenu du dossier, pas le dossier)
+    - name: Deploy the Angular application files
+      ansible.builtin.copy:
+        src: "files/{{ app_name }}/"
+        dest: "{{ app_root }}/"
+        owner: root
+        group: root
+        mode: "u=rwX,go=rX"
+    # Écrit la configuration du site ; si elle change, Nginx sera redémarré
+    - name: Deploy Nginx site configuration
+      ansible.builtin.template:
+        src: templates/app.conf.j2
+        dest: "/etc/nginx/sites-available/{{ app_name }}.conf"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart Nginx
+
+    # Active le site (lien dans sites-enabled, convention Debian/Ubuntu)
+    - name: Enable the application site
+      ansible.builtin.file:
+        src: "/etc/nginx/sites-available/{{ app_name }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ app_name }}.conf"
+        state: link
+      notify: Restart Nginx
+
+    # Désactive le site par défaut (il prendrait aussi le port 80)
+    - name: Disable the default Nginx site
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Restart Nginx
+  handlers:
+    # Vérifie la syntaxe Nginx AVANT de redémarrer (sinon le site tomberait)
+    - name: Restart Nginx
+      ansible.builtin.command: nginx -t
+      changed_when: false
+      notify: Restart Nginx service
+
+    # Redémarre Nginx pour appliquer la nouvelle configuration
+    - name: Restart Nginx service
+      ansible.builtin.service:
+        name: nginx
+        state: restarted

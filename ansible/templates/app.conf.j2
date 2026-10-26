@@ -1,0 +1,47 @@
+# Fichier : ansible/templates/app.conf.j2
+# Rôle    : configuration Nginx qui sert l'application Angular
+# Utilise : variables app_name et app_root du playbook deploy.yml
+# Utilisé par : deploy.yml (tâche « Deploy Nginx site configuration »)
+# {{ ansible_managed }}
+
+server {
+    listen 80 default_server;
+    server_name _;
+
+    root  {{ app_root }};
+    index index.html;
+
+    # Cache la version de Nginx dans les réponses (moins d'infos pour un attaquant)
+    server_tokens off;
+
+    # En-têtes de sécurité : interdit l'affichage dans un cadre, bloque la
+    # devinette du type de fichier, limite les infos envoyées aux autres sites
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Application monopage : toute URL inconnue renvoie index.html (routeur Angular)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Pages HTML et service worker : jamais en cache (nouvelle version visible tout de suite)
+    location ~* (\.html|/sw\.js)$ {
+        expires -1;
+        add_header Cache-Control "no-cache";
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    # Fichiers statiques au nom unique (empreinte dans le nom) : cache 1 an
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|json|svg|woff2?)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+}
