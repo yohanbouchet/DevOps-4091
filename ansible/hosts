@@ -1,0 +1,14 @@
+# Fichier : ansible/hosts
+# Rôle    : inventaire Ansible, les machines ciblées et comment s'y connecter
+# Utilise : clé SSH ~/.ssh/p5_vm_ed25519 (créée pour la VM)
+# Utilisé par : ansible.cfg, ansible -m ping, ansible-playbook deploy.yml
+
+# Groupe des serveurs web : la VM Ubuntu lancée par terraform/ubuntu-vm
+[web]
+p5-ubuntu-vm ansible_host=127.0.0.1 ansible_port=2222
+
+# Connexion du groupe : compte de service et clé SSH, aucun mot de passe
+[web:vars]
+ansible_user=ansible
+ansible_ssh_private_key_file=~/.ssh/p5_vm_ed25519
+ansible_python_interpreter=/usr/bin/python3
