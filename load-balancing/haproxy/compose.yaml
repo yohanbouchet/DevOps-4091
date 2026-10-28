@@ -1,18 +1,20 @@
 # Fichier : load-balancing/haproxy/compose.yaml
 # Rôle    : répartiteur de charge HAProxy devant deux serveurs web identiques
-# Utilise : haproxy.cfg (monté en lecture seule)
+# Utilise : haproxy.cfg (monté en lecture seule), webserver/Dockerfile
 # Utilisé par : docker compose up -d (exercice 3)
 
 services:
-  # Deux serveurs web identiques ; chaque page affiche le nom du serveur
-  # qui a répondu
+  # Deux serveurs web identiques (chaque page affiche le nom du serveur qui a
+  # répondu) ; même image, construite une fois depuis webserver/Dockerfile
   webserver1:
-    image: nginxdemos/hello:plain-text
+    build: ./webserver
+    image: p5/hello-patched:0.4
   webserver2:
-    image: nginxdemos/hello:plain-text
+    build: ./webserver
+    image: p5/hello-patched:0.4
 
   haproxy:
-    image: haproxy:3.2
+    image: haproxy:3.2-alpine
     volumes:
       # Configuration montée en lecture seule (le conteneur ne peut pas
       # la modifier)

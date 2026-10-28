@@ -10,12 +10,12 @@ variable "container_name" {
   default     = "nginx-tf"
 }
 
-# Image imposée par l'énoncé ; en production, épingler une version
-# (ex. nginx:1.30) pour que chaque déploiement soit identique
+# Branche stable, variante Alpine (moins de failles) ; l'énoncé proposait
+# nginx:latest. En production : épingler aussi l'empreinte (nginx@sha256:...)
 variable "nginx_image" {
-  description = "Nginx image ('latest' is required by the exercise)"
+  description = "Nginx image (stable branch, Alpine variant: fewer CVEs)"
   type        = string
-  default     = "nginx:latest"
+  default     = "nginx:stable-alpine"
 }
 
 # Port de la machine hôte relié au port 80 du conteneur (8000 : étape 2)

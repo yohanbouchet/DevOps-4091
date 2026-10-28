@@ -63,9 +63,10 @@ Le kit fourni utilisait des versions qui ne sont plus supportées : elles ont
 | Provider `kreuzwerker/docker` | 4.6.0 (`~> 4.6`) | 3.0.2 | Dernière version stable |
 | Ansible | core 2.21.5 (PPA officiel) | – | Le paquet Ubuntu (2.20) n'est plus supporté |
 | Image de la VM | `qemux/qemu:7.50` + Ubuntu 24.04 LTS | `qemux/qemu-docker:5.16` | L'image du kit n'existe plus sur Docker Hub |
-| Nginx (exercice 1) | `nginx:latest` (imposé) | – | Voir [Limites](#limites-et-évolutions) |
-| Elasticsearch / Kibana | 9.5.5 | 7.14.0 | 7.14 en fin de support |
-| HAProxy | 3.2 LTS (support jusqu'en 2030) | 2.3 | 2.3 en fin de support |
+| Nginx (exercice 1) | `nginx:stable-alpine` (1.30.6) | `nginx:latest` (énoncé) | Branche stable, variante Alpine : moins de failles |
+| Elasticsearch / Kibana | 9.5.5, variante Wolfi | 7.14.0 | 7.14 en fin de support ; Wolfi = base minimale |
+| HAProxy | 3.2 LTS, variante Alpine (support jusqu'en 2030) | 2.3 | 2.3 en fin de support |
+| Serveurs web (exercice 3) | `nginxdemos/hello:0.4` + correctifs Alpine | `nginxdemos/hello` | Image reconstruite (`webserver/Dockerfile`) |
 
 ## Arborescence
 
@@ -76,7 +77,7 @@ Le kit fourni utilisait des versions qui ne sont plus supportées : elles ont
 │   └── ubuntu-vm/        # Ex. 1 – VM Ubuntu cible d'Ansible (+ cloud-init/)
 ├── ansible/              # Ex. 1 – inventaire, playbook, template, application
 ├── monitoring/elk/       # Ex. 2 – Elasticsearch + Kibana, logs d'exemple
-├── load-balancing/haproxy/ # Ex. 3 – HAProxy + deux serveurs web
+├── load-balancing/haproxy/ # Ex. 3 – HAProxy + deux serveurs web (webserver/)
 └── docs/                 # Captures (dashboard Kibana, statistiques HAProxy)
 ```
 
@@ -96,7 +97,7 @@ convention HashiCorp : `terraform.tf` (versions), `variables.tf`, `main.tf`,
 ## Exercice 1 – Terraform et Ansible
 
 ### Conteneur Nginx (`terraform/nginx`)
-Un provider `docker`, une ressource `docker_image` (`nginx:latest`) et une
+Un provider `docker`, une ressource `docker_image` (`nginx:stable-alpine`) et une
 ressource `docker_container` qui l'utilise, port 80 publié sur le port 8000.
 
 ```bash
@@ -210,35 +211,41 @@ CloudWatch.
 
 ### Analyse de sécurité avec trivy (28/10/2026)
 
-Scan local avec [trivy](https://trivy.dev) 0.75.0, failles de gravité haute et
-critique :
+Scan local avec [trivy](https://trivy.dev) 0.75.0 (failles hautes et
+critiques), puis réduction en trois techniques : **variante d'image plus
+légère** de la même version, **reconstruction avec les correctifs** du système,
+et **documentation** de ce que seul l'éditeur peut corriger.
 
 ```bash
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
   aquasec/trivy:0.75.0 image --scanners vuln --severity HIGH,CRITICAL <image>
 docker run --rm -v "$PWD:/src:ro" aquasec/trivy:0.75.0 config /src
+docker run --rm -i hadolint/hadolint:v2.14.0 < load-balancing/haproxy/webserver/Dockerfile
 ```
 
-| Image | Critiques | Hautes | Avec correctif publié |
+| Exercice | Avant (critiques / hautes) | Après | Ce qui reste |
 |---|---|---|---|
-| `nginx:latest` (Debian 13) | 1 | 58 | 0 |
-| `qemux/qemu:7.50` (Debian 13) | 15 | 270 | 97 |
-| `elasticsearch:9.5.5` (RHEL 9) | 1 | 37 | 29 |
-| `kibana:9.5.5` (RHEL 9) | 5 | 70 | 60 |
-| `haproxy:3.2` (Debian 13) | 0 | 43 | 0 |
-| `nginxdemos/hello:plain-text` (Alpine 3.22) | 3 | 61 | 64 |
+| 1 – Nginx | `nginx:latest` : 1 / 58 | `nginx:stable-alpine` : **0 / 3** | 3 failles de curl, sans correctif publié |
+| 2 – Elasticsearch | 9.5.5 : 1 / 37 | 9.5.5 Wolfi : **0 / 30** | Bibliothèques Java intégrées par Elastic (guava, jackson) |
+| 2 – Kibana | 9.5.5 : 5 / 70 | 9.5.5 Wolfi : **4 / 50** | Dépendances JavaScript de Kibana (axios, undici…) |
+| 3 – HAProxy | `haproxy:3.2` : 0 / 43 | `haproxy:3.2-alpine` : **0 / 0** | – |
+| 3 – Serveurs web | `nginxdemos/hello` : 3 / 61 | image reconstruite : **0 / 0** | – |
+| 1 – VM (outil de test) | `qemux/qemu:7.50` : 15 / 270 | inchangée | Voir ci-dessous |
 
-- **Configuration Terraform** (`trivy config`) : 0 erreur sur les deux
-  configurations. Les règles de trivy visent surtout les fournisseurs Cloud
-  (AWS, Azure) : peu s'appliquent au provider Docker.
-- Toutes les images sont déjà à leur **dernière version publiée** (vérifié le
-  28/10) : les correctifs existent dans les paquets du système, mais les
-  éditeurs n'ont pas encore reconstruit leurs images ; `nginxdemos/hello`
-  (imposée par l'énoncé) n'est plus mise à jour depuis août 2025.
-- **Risque accepté pour cet environnement local** : aucun service n'est exposé
-  au réseau (127.0.0.1), les données sont fictives. En production : images
-  reconstruites régulièrement, scan bloquant dans la CI, remplacement des images
-  non maintenues, et dans le Cloud un scan géré (Amazon ECR, Amazon Inspector).
+- **Failles critiques : de 25 à 4.** Les 4 restantes sont dans le code de
+  Kibana : seule une nouvelle version d'Elastic peut les corriger (9.5.5 est la
+  dernière, vérifié le 28/10).
+- **VM `qemux/qemu`** non modifiée : c'est un outil local qui simule le serveur
+  cible, pas un service déployé ; une reconstruction ne corrigerait qu'environ
+  un tiers des failles (Debian n'a pas publié le reste) avec un risque de casser
+  la VM.
+- **Configuration Terraform** (`trivy config`) : 0 erreur. Les règles visent
+  surtout les fournisseurs Cloud : peu s'appliquent au provider Docker.
+- Risque résiduel accepté pour cet environnement local (services sur
+  127.0.0.1, données fictives). En production : scan bloquant dans la CI sur
+  les failles critiques corrigeables (`--ignore-unfixed --exit-code 1`),
+  reconstruction régulière des images, et dans le Cloud un scan géré
+  (Amazon ECR, Amazon Inspector).
 
 ## Limites et évolutions
 
@@ -246,8 +253,9 @@ Limites assumées pour un environnement d'exercice local :
 - Sécurité d'Elasticsearch désactivée (`xpack.security.enabled=false`),
   compensée par l'écoute sur 127.0.0.1 ; en production : authentification et
   TLS activés, mots de passe hors du dépôt.
-- `nginx:latest` imposé par l'énoncé : en production, version épinglée
-  (`nginx:1.30` ou empreinte `sha256`).
+- Écart assumé avec l'énoncé : `nginx:stable-alpine` au lieu de `nginx:latest`
+  (branche stable, moins de failles) ; en production on épinglerait aussi
+  l'empreinte (`nginx@sha256:…`).
 - `sudo` sans mot de passe pour le compte `ansible` de la VM (nécessaire à une
   exécution sans saisie).
 - État Terraform local ; application compilée versionnée dans Git.

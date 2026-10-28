@@ -1,21 +1,24 @@
 # Fichier : monitoring/elk/compose.yaml
 # Rôle    : stack de supervision locale : Elasticsearch (stockage, recherche)
 #           et Kibana (interface, tableaux de bord)
-# Utilise : images officielles Elastic (version épinglée, identique pour les deux)
+# Utilise : images officielles Elastic, variante Wolfi (base minimale,
+#           moins de failles)
 # Utilisé par : docker compose up -d (exercice 2)
 
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
+    image: docker.elastic.co/elasticsearch/elasticsearch-wolfi:9.5.5
     container_name: elasticsearch
     environment:
       # Un seul nœud : pas de recherche d'autres membres de cluster
       - discovery.type=single-node
-      # Sécurité désactivée pour l'exercice local (compensée : écoute sur 127.0.0.1)
+      # Sécurité désactivée pour l'exercice local (compensée : écoute sur
+      # 127.0.0.1)
       - xpack.security.enabled=false
       # Mémoire Java fixe (min = max) : 1 Go suffit pour l'exercice
       - ES_JAVA_OPTS=-Xms1g -Xmx1g
-      # Verrouille la mémoire : interdit l'écriture sur le disque d'échange (lenteurs)
+      # Verrouille la mémoire : interdit l'écriture sur le disque d'échange
+      # (lenteurs)
       - bootstrap.memory_lock=true
     ulimits:
       memlock:
@@ -29,7 +32,9 @@ services:
       - "127.0.0.1:9200:9200"
     # Prêt quand le cluster répond (Kibana attend ce feu vert)
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      test:
+        - "CMD-SHELL"
+        - "curl -fs http://localhost:9200/_cluster/health || exit 1"
       interval: 10s
       timeout: 5s
       retries: 30
@@ -37,7 +42,7 @@ services:
       - elk
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:9.5.5
+    image: docker.elastic.co/kibana/kibana-wolfi:9.5.5
     container_name: kibana
     environment:
       # Adresse d'Elasticsearch sur le réseau interne (nom du service)
