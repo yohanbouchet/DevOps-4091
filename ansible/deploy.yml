@@ -12,6 +12,7 @@
   vars:
     app_name: olympic-games-starter
     app_root: "/var/www/html/{{ app_name }}"
+
   tasks:
     # Installe Nginx depuis les dépôts Ubuntu (cache apt rafraîchi si > 1 h)
     - name: Install Nginx
@@ -27,6 +28,7 @@
         name: nginx
         state: started
         enabled: true
+
     # Copie l'application déjà compilée (contenu du dossier, pas le dossier)
     - name: Deploy the Angular application files
       ansible.builtin.copy:
@@ -35,6 +37,7 @@
         owner: root
         group: root
         mode: "u=rwX,go=rX"
+
     # Écrit la configuration du site ; si elle change, Nginx sera redémarré
     - name: Deploy Nginx site configuration
       ansible.builtin.template:
@@ -59,6 +62,7 @@
         path: /etc/nginx/sites-enabled/default
         state: absent
       notify: Restart Nginx
+
   handlers:
     # Vérifie la syntaxe Nginx AVANT de redémarrer (sinon le site tomberait)
     - name: Restart Nginx
