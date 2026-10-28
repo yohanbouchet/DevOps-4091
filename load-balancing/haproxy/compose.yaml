@@ -1,0 +1,27 @@
+# Fichier : load-balancing/haproxy/compose.yaml
+# Rôle    : répartiteur de charge HAProxy devant deux serveurs web identiques
+# Utilise : haproxy.cfg (monté en lecture seule)
+# Utilisé par : docker compose up -d (exercice 3)
+
+services:
+  # Deux serveurs web identiques ; chaque page affiche le nom du serveur
+  # qui a répondu
+  webserver1:
+    image: nginxdemos/hello:plain-text
+  webserver2:
+    image: nginxdemos/hello:plain-text
+
+  haproxy:
+    image: haproxy:3.2
+    volumes:
+      # Configuration montée en lecture seule (le conteneur ne peut pas
+      # la modifier)
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      # Site réparti, puis page de statistiques ; accessibles depuis la
+      # machine seule
+      - "127.0.0.1:8080:80"
+      - "127.0.0.1:8404:8404"
+    depends_on:
+      - webserver1
+      - webserver2
