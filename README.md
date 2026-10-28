@@ -208,6 +208,38 @@ CloudWatch.
 - **Données personnelles (RGPD)** : adresses IP des logs d'exemple
   pseudonymisées (dernier octet remplacé par 0) avant publication.
 
+### Analyse de sécurité avec trivy (28/10/2026)
+
+Scan local avec [trivy](https://trivy.dev) 0.75.0, failles de gravité haute et
+critique :
+
+```bash
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+  aquasec/trivy:0.75.0 image --scanners vuln --severity HIGH,CRITICAL <image>
+docker run --rm -v "$PWD:/src:ro" aquasec/trivy:0.75.0 config /src
+```
+
+| Image | Critiques | Hautes | Avec correctif publié |
+|---|---|---|---|
+| `nginx:latest` (Debian 13) | 1 | 58 | 0 |
+| `qemux/qemu:7.50` (Debian 13) | 15 | 270 | 97 |
+| `elasticsearch:9.5.5` (RHEL 9) | 1 | 37 | 29 |
+| `kibana:9.5.5` (RHEL 9) | 5 | 70 | 60 |
+| `haproxy:3.2` (Debian 13) | 0 | 43 | 0 |
+| `nginxdemos/hello:plain-text` (Alpine 3.22) | 3 | 61 | 64 |
+
+- **Configuration Terraform** (`trivy config`) : 0 erreur sur les deux
+  configurations. Les règles de trivy visent surtout les fournisseurs Cloud
+  (AWS, Azure) : peu s'appliquent au provider Docker.
+- Toutes les images sont déjà à leur **dernière version publiée** (vérifié le
+  28/10) : les correctifs existent dans les paquets du système, mais les
+  éditeurs n'ont pas encore reconstruit leurs images ; `nginxdemos/hello`
+  (imposée par l'énoncé) n'est plus mise à jour depuis août 2025.
+- **Risque accepté pour cet environnement local** : aucun service n'est exposé
+  au réseau (127.0.0.1), les données sont fictives. En production : images
+  reconstruites régulièrement, scan bloquant dans la CI, remplacement des images
+  non maintenues, et dans le Cloud un scan géré (Amazon ECR, Amazon Inspector).
+
 ## Limites et évolutions
 
 Limites assumées pour un environnement d'exercice local :
